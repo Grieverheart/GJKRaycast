@@ -11,6 +11,10 @@ namespace shape{
             return clam::Vec3d(0.0);
         }
 
+        double out_radius(void)const{
+            return 0.0;
+        }
+
         double volume(void)const{
             return 0.0;
         }

@@ -7,5 +7,7 @@
 #include "cone.h"
 #include "cylinder.h"
 #include "point.h"
+#include "disk.h"
+#include "hull.h"
 
 #endif

@@ -241,7 +241,6 @@ namespace overlap{
             }
 
             void closest(Vec3d& dir);
-            void closest_full(Vec3d& dir);
             bool contains_origin(Vec3d& dir);
 
         private:
@@ -369,6 +368,18 @@ namespace overlap{
                     break;
                 }
 
+                /* On bcd side */
+                Vec3d bcxbd = cross(c - b, d - b);
+                // The origin should be on bcd's side
+                if(dot(bcxbd, ab) * dot(bcxbd, b) < 0.0){
+                    /* Remove point a */
+                    remove_point(last_sb_);
+                    last_sb_ = pos[0];
+                    dir = (dot(ab, bcxbd) < 0.0)? -bcxbd: bcxbd;
+                    dir *= -dot(dir, b) / dir.length2();
+                    break;
+                }
+
                 /* 'else' should only be when the origin is inside the tetrahedron */
                 break;
             }
@@ -457,280 +468,6 @@ namespace overlap{
             }
         }
 
-        inline void Simplex::closest_full(Vec3d& dir){
-            ///////////////////////////////////////////////
-            //  Check if the origin is contained in the  //
-            //  Minkowski sum.                           //
-            ///////////////////////////////////////////////
-            switch(size_){
-            case 4:
-            {
-                const uchar* pos = p_pos[(bits_ ^ (1 << last_sb_))];
-
-                const Vec3d& a = p_[last_sb_];
-                const Vec3d& b = p_[pos[0]];
-                const Vec3d& c = p_[pos[1]];
-                const Vec3d& d = p_[pos[2]];
-
-                ////////////////////* Vertex Case *///////////////////
-
-                Vec3d ab = b - a;
-                Vec3d ac = c - a;
-                Vec3d ad = d - a;
-
-                //Vertex A
-                double dot_ab = dot(ab, a);
-                double dot_ac = dot(ac, a);
-                double dot_ad = dot(ad, a);
-                if(dot_ab >= 0.0 && dot_ac >= 0.0 && dot_ad >= 0.0){
-                    dir = -a; //Take direction passing through origin
-                    remove_point(pos[0]);
-                    remove_point(pos[1]);
-                    remove_point(pos[2]);
-                    break;
-                }
-
-                Vec3d bc = c - b;
-                Vec3d bd = d - b;
-
-                //Vertex B
-                double dot_ba = -dot(ab, b);
-                double dot_bc = dot(bc, b);
-                double dot_bd = dot(bd, b);
-                if(dot_ba >= 0.0 && dot_bc >= 0.0 && dot_bd >= 0.0){
-                    dir = -b; //Take direction passing through origin
-                    remove_point(pos[1]);
-                    remove_point(pos[2]);
-                    remove_point(last_sb_);
-                    last_sb_ = pos[0];
-                    break;
-                }
-
-                Vec3d cd = d - c;
-
-                //Vertex C
-                double dot_cb = -dot(bc, c);
-                double dot_ca = -dot(ac, c);
-                double dot_cd = dot(cd, c);
-                if(dot_ca >= 0.0 && dot_cb >= 0.0 && dot_cd >= 0.0){
-                    dir = -c; //Take direction passing through origin
-                    remove_point(pos[0]);
-                    remove_point(pos[2]);
-                    remove_point(last_sb_);
-                    last_sb_ = pos[1];
-                    break;
-                }
-
-                //Vertex D
-                double dot_da = -dot(ad, d);
-                double dot_db = -dot(bd, d);
-                double dot_dc = -dot(cd, d);
-                if(dot_da >= 0.0 && dot_db >= 0.0 && dot_dc >= 0.0){
-                    dir = -d; //Take direction passing through origin
-                    remove_point(pos[0]);
-                    remove_point(pos[1]);
-                    remove_point(last_sb_);
-                    last_sb_ = pos[2];
-                    break;
-                }
-
-                ////////////////////* Edge Cases *///////////////////
-                //printf("%f, %f, %f - %f, %f, %f\n",
-                //    dir[0] / dir.length(), dir[1] / dir.length(), dir[2] / dir.length(),
-                //    shit[0] / shit.length(), shit[1] / shit.length(), shit[2] / shit.length());
-
-                /* ab Edge case */
-                Vec3d abxac = cross(ab, ac);
-                Vec3d abxad = cross(ab, ad);
-                Vec3d abPerp1 = cross(abxac, ab);
-                Vec3d abPerp2 = cross(abxad, ab);
-                double dot_abPerp1 = dot(abPerp1, a);
-                double dot_abPerp2 = dot(abPerp2, a);
-                // The origin must be inside the space defined by the intersection
-                // of two half-space normal to the adjacent faces abc, abd
-                if(dot_abPerp1 >= 0.0 && dot_abPerp2 >= 0.0 && dot_ab <= 0.0){
-                    dir = -a - (dot_ab / (dot_ab - dot(ab, b))) * ab;
-                    remove_point(pos[1]);
-                    remove_point(pos[2]);
-                    break;
-                }
-
-                /* ac Edge case */
-                Vec3d acxad = cross(ac, ad);
-                Vec3d acPerp1 = cross(acxad, ac);
-                Vec3d acPerp2 = cross(ac, abxac);
-                double dot_acPerp1 = dot(acPerp1, a);
-                double dot_acPerp2 = dot(acPerp2, a);
-                // The origin must be inside the space defined by the intersection
-                // of two half-space normal to the adjacent faces abc, acd
-                if(dot_acPerp1 >= 0.0 && dot_acPerp2 >= 0.0 && dot_ac <= 0.0){
-                    dir = -a - (dot_ac / (dot_ac - dot(ac, c))) * ac;
-                    remove_point(pos[0]);
-                    remove_point(pos[2]);
-                    break;
-                }
-
-                /* ad Edge case */
-                Vec3d adPerp1 = cross(ad, abxad);
-                Vec3d adPerp2 = cross(ad, acxad);
-                double dot_adPerp1 = dot(adPerp1, a);
-                double dot_adPerp2 = dot(adPerp2, a);
-                // The origin must be inside the space defined by the intersection
-                // of two half-space normal to the adjacent faces acd, abd
-                if(dot_adPerp1 >= 0.0 && dot_adPerp2 >= 0.0 && dot_ad <= 0.0){
-                    dir = -a - (dot_ad / (dot_ad - dot(ad, d))) * ad;
-                    remove_point(pos[0]);
-                    remove_point(pos[1]);
-                    break;
-                }
-
-                ////////////////////* Face Cases *///////////////////
-
-                /* On abc side */
-                // The origin should be on abc's side and between the half-spaces defined by ac and ab (normal to abc)
-                if((dot(abxac, ad) * dot(abxac, a) > 0.0) && dot_abPerp1 <= 0.0 && dot_acPerp2 <= 0.0){
-                    /* Remove point d */
-                    remove_point(pos[2]);
-                    dir = (dot(ad, abxac) > 0.0)? -abxac: abxac;
-                    dir *= -dot(dir, a) / dir.length2();
-                    break;
-                }
-
-                /* On abd side */
-                // The origin should be on abd's side and between the half-spaces defined by ab and ad (normal to abd)
-                if((dot(abxad, ac) * dot(abxad, a) > 0.0) && dot_abPerp2 <= 0.0 && dot_adPerp1 <= 0.0){
-                    /* Remove point c */
-                    remove_point(pos[1]);
-                    dir = (dot(ac, abxad) > 0.0)? -abxad: abxad;
-                    dir *= -dot(dir, a) / dir.length2();
-                    break;
-                }
-
-                /* On acd side */
-                // The origin should be on acd's side and between the half-spaces defined by ac and ad (normal to acd)
-                if((dot(acxad, ab) * dot(acxad, a) > 0.0) && dot_acPerp1 <= 0.0 && dot_adPerp2 <= 0.0){
-                    /* Remove point b */
-                    remove_point(pos[0]);
-                    dir = (dot(ab, acxad) > 0.0)? -acxad: acxad;
-                    dir *= -dot(dir, a) / dir.length2();
-                    break;
-                }
-
-                /* 'else' should only be when the origin is inside the tetrahedron */
-                break;
-            }
-            case 3:
-            {
-                const uchar* pos = p_pos[(bits_ ^ (1 << last_sb_))];
-
-                const Vec3d& a = p_[last_sb_];
-                const Vec3d& b = p_[pos[0]];
-                const Vec3d& c = p_[pos[1]];
-
-                Vec3d ab = b - a;
-                Vec3d ac = c - a;
-
-                // Check if O in vertex region A
-                double dot_aba = -dot(ab, a);
-                double dot_aca = -dot(ac, a);
-                if(dot_aba <= 0.0 && dot_aca <= 0.0){
-                    dir = -a; //Take direction passing through origin
-                    remove_point(pos[0]);
-                    remove_point(pos[1]);
-                    break;
-                }
-
-                // Check if O in vertex region B
-                double dot_abb = -dot(ab, b);
-                double dot_acb = -dot(ac, b);
-                if(dot_abb >= 0.0 && dot_acb <= dot_abb){
-                    dir = -b; //Take direction passing through origin
-                    remove_point(pos[1]);
-                    remove_point(last_sb_);
-                    last_sb_ = pos[0];
-                    break;
-                }
-
-                // Check if O in edge region AB
-                double vc = dot_aba * dot_acb - dot_abb * dot_aca;
-                if(vc <= 0.0 && dot_aba >= 0.0 && dot_abb <= 0.0){
-                    dir = -a - (dot_aba / (dot_aba - dot_abb)) * ab;
-                    /* Remove Point c */
-                    remove_point(pos[1]);
-                    break;
-                }
-
-                // Check if O in vertex region C
-                double dot_abc = -dot(ab, c);
-                double dot_acc = -dot(ac, c);
-                if(dot_abc >= 0.0 && dot_abc <= dot_acc){
-                    dir = -c; //Take direction passing through origin
-                    remove_point(pos[0]);
-                    remove_point(last_sb_);
-                    last_sb_ = pos[1];
-                    break;
-                }
-
-                // Check if O in edge region AC
-                double vb = dot_abc * dot_aca - dot_aba * dot_acc;
-                if(vb <= 0.0 && dot_aca >= 0.0 && dot_acc <= 0.0){
-                    double w = dot_aca / (dot_aca - dot_acc);
-                    dir = -a - w * ac;
-                    /* Remove Point b */
-                    remove_point(pos[0]);
-                    break;
-                }
-
-                // Check if O in edge region BC
-                double va = dot_abb * dot_acc - dot_abc * dot_acb;
-                if(va <= 0.0 && (dot_acb - dot_abb) >= 0.0 && (dot_abc - dot_acc) >= 0.0){
-                    double w = (dot_acb - dot_abb) / ((dot_acb - dot_abb) + (dot_abc - dot_acc));
-                    dir = -b - w * (c - b);
-                    /* Remove Point a */
-                    remove_point(last_sb_);
-                    last_sb_ = pos[0];
-                    break;
-                }
-
-                dir = -a - (ab * vb + ac * vc) / (va + vb + vc);
-                break;
-            }
-            case 2:
-            {
-                const uchar* pos = p_pos[(bits_ ^ (1 << last_sb_))];
-
-                const Vec3d& a = p_[last_sb_];
-                const Vec3d& b = p_[pos[0]];
-
-                Vec3d  ab = b - a;
-
-                double t = -dot(ab, a);
-                if(t <= 0.0){
-                    dir = -a; //Take direction passing through origin
-                    remove_point(pos[0]);
-                    break;
-                }
-
-                double denom = ab.length2();
-                if(t >= denom){
-                    remove_point(last_sb_);
-                    last_sb_ = pos[0];
-                    dir = -b;
-                    break;
-                }
-
-                dir = -(a + ab * (t / denom));
-                break;
-            }
-            case 1:
-            {
-                const Vec3d& a = p_[last_sb_];
-                dir = -a;
-                break;
-            }
-            default: break;
-            }
-        }
 
         inline bool Simplex::contains_origin(Vec3d& dir){
             ///////////////////////////////////////////////
@@ -1035,12 +772,13 @@ namespace overlap{
                 double delta = dot(dir, new_point_trans) / dot(dir, ray_dir);
                 lambda -= delta;
                 x = -lambda * ray_dir;
+                if(x.length2() > 100.0) return false;
                 normal = dir / dir.length();
                 S.translate(-delta * ray_dir);
             }
 
             S.add_point(new_point_trans);
-            S.closest_full(dir);
+            S.closest(dir);
 
             dist2 = dir.length2();
 
@@ -1051,6 +789,6 @@ namespace overlap{
         }
         distance = lambda;
         printf("Encountered error in GJK raycast: Infinite Loop.\n Direction (%f, %f, %f)\n", dir[0], dir[1], dir[2]);
-        return true;
+        return false;
     }
 }

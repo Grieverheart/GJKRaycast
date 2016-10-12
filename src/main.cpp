@@ -199,8 +199,8 @@ int main(int argc, char *argv[]){
             xform_point.pos_ = clam::Vec3d((double(w) / width - 0.5) * screen_width, (double(h) / height - 0.5) * screen_height, 5.0);
             double distance = 1000000.0;
             clam::Vec3d normal;
-            //bool ray_hit = overlap::gjk_raycast(xform_point, point, xform_cone, cone, ray_dir, distance, normal);
-            bool ray_hit = conservative_advancement(xform_point, point, xform_cone, cone, ray_dir, distance, normal);
+            bool ray_hit = overlap::gjk_raycast(xform_point, point, xform_cone, cone, ray_dir, distance, normal);
+            //bool ray_hit = conservative_advancement(xform_point, point, xform_cone, cone, ray_dir, distance, normal);
             //bool ray_hit = boolean_advancement(xform_point, point, xform_cone, cone, ray_dir, distance, normal);
             if(ray_hit){
                 //double factor = 1.0;

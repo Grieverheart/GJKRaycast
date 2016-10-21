@@ -274,11 +274,11 @@ namespace overlap{
 
                 ////////////////////* Vertex Case *///////////////////
 
-                double dot_ab = dot(ab, a);
-                double dot_ac = dot(ac, a);
-                double dot_ad = dot(ad, a);
+                double dot_aba = dot(ab, a);
+                double dot_aca = dot(ac, a);
+                double dot_ada = dot(ad, a);
 
-                if(dot_ab >= 0.0 && dot_ac >= 0.0 && dot_ad >= 0.0){
+                if(dot_aba >= 0.0 && dot_aca >= 0.0 && dot_ada >= 0.0){
                     dir = -a; //Take direction passing through origin
                     remove_point(pos[0]);
                     remove_point(pos[1]);
@@ -292,45 +292,39 @@ namespace overlap{
                 //    shit[0] / shit.length(), shit[1] / shit.length(), shit[2] / shit.length());
 
                 /* ab Edge case */
-                Vec3d abxac = cross(ab, ac);
-                Vec3d abxad = cross(ab, ad);
-                Vec3d abPerp1 = cross(abxac, ab);
-                Vec3d abPerp2 = cross(abxad, ab);
-                double dot_abPerp1 = dot(abPerp1, a);
-                double dot_abPerp2 = dot(abPerp2, a);
+                double dot_abb = dot(ab, b);
+                double dot_abPerp1 = dot_aba * dot(ac, b) - dot_abb * dot_aca;
+                double dot_abPerp2 = dot_aba * dot(ad, b) - dot_abb * dot_ada;
                 // The origin must be inside the space defined by the intersection
                 // of two half-space normal to the adjacent faces abc, abd
-                if(dot_abPerp1 >= 0.0 && dot_abPerp2 >= 0.0 && dot_ab <= 0.0){
-                    dir = -a - (dot_ab / (dot_ab - dot(ab, b))) * ab;
+                if(dot_abPerp1 <= 0.0 && dot_abPerp2 <= 0.0 && dot_aba <= 0.0){
+                    dir = -a - (dot_aba / (dot_aba - dot(ab, b))) * ab;
                     remove_point(pos[1]);
                     remove_point(pos[2]);
                     break;
                 }
 
                 /* ac Edge case */
-                Vec3d acxad = cross(ac, ad);
-                Vec3d acPerp1 = cross(acxad, ac);
-                Vec3d acPerp2 = cross(ac, abxac);
-                double dot_acPerp1 = dot(acPerp1, a);
-                double dot_acPerp2 = dot(acPerp2, a);
+                double dot_acc = dot(ac, c);
+                double dot_acPerp1 = dot_aca * dot(ad, c) - dot_acc * dot_ada;
+                double dot_acPerp2 = dot_aca * dot(ab, c) - dot_acc * dot_aba;
                 // The origin must be inside the space defined by the intersection
                 // of two half-space normal to the adjacent faces abc, acd
-                if(dot_acPerp1 >= 0.0 && dot_acPerp2 >= 0.0 && dot_ac <= 0.0){
-                    dir = -a - (dot_ac / (dot_ac - dot(ac, c))) * ac;
+                if(dot_acPerp1 <= 0.0 && dot_acPerp2 <= 0.0 && dot_aca <= 0.0){
+                    dir = -a - (dot_aca / (dot_aca - dot(ac, c))) * ac;
                     remove_point(pos[0]);
                     remove_point(pos[2]);
                     break;
                 }
 
                 /* ad Edge case */
-                Vec3d adPerp1 = cross(ad, abxad);
-                Vec3d adPerp2 = cross(ad, acxad);
-                double dot_adPerp1 = dot(adPerp1, a);
-                double dot_adPerp2 = dot(adPerp2, a);
+                double dot_add = dot(ad, d);
+                double dot_adPerp1 = dot_ada * dot(ab, d) - dot_add * dot_aba;
+                double dot_adPerp2 = dot_ada * dot(ac, d) - dot_add * dot_aca;
                 // The origin must be inside the space defined by the intersection
                 // of two half-space normal to the adjacent faces acd, abd
-                if(dot_adPerp1 >= 0.0 && dot_adPerp2 >= 0.0 && dot_ad <= 0.0){
-                    dir = -a - (dot_ad / (dot_ad - dot(ad, d))) * ad;
+                if(dot_adPerp1 <= 0.0 && dot_adPerp2 <= 0.0 && dot_ada <= 0.0){
+                    dir = -a - (dot_ada / (dot_ada - dot(ad, d))) * ad;
                     remove_point(pos[0]);
                     remove_point(pos[1]);
                     break;
@@ -340,44 +334,55 @@ namespace overlap{
 
                 /* On abc side */
                 // The origin should be on abc's side and between the half-spaces defined by ac and ab (normal to abc)
-                if((dot(abxac, ad) * dot(abxac, a) > 0.0) && dot_abPerp1 <= 0.0 && dot_acPerp2 <= 0.0){
-                    /* Remove point d */
-                    remove_point(pos[2]);
-                    dir = (dot(ad, abxac) > 0.0)? -abxac: abxac;
-                    dir *= -dot(dir, a) / dir.length2();
-                    break;
+                {
+                    clam::Vec3d abxac = cross(ab, ac);
+                    if(dot(ad, abxac) * dot(a, abxac) > 0.0 && dot_abPerp1 >= 0.0 && dot_acPerp2 >= 0.0){
+                        /* Remove point d */
+                        remove_point(pos[2]);
+                        dir = (dot(ad, abxac) > 0.0)? -abxac: abxac;
+                        dir *= -dot(dir, a) / dir.length2();
+                        break;
+                    }
                 }
 
                 /* On abd side */
                 // The origin should be on abd's side and between the half-spaces defined by ab and ad (normal to abd)
-                if((dot(abxad, ac) * dot(abxad, a) > 0.0) && dot_abPerp2 <= 0.0 && dot_adPerp1 <= 0.0){
-                    /* Remove point c */
-                    remove_point(pos[1]);
-                    dir = (dot(ac, abxad) > 0.0)? -abxad: abxad;
-                    dir *= -dot(dir, a) / dir.length2();
-                    break;
+                {
+                    clam::Vec3d abxad = cross(ab, ad);
+                    if(dot(ac, abxad) * dot(a, abxad) > 0.0 && dot_abPerp2 >= 0.0 && dot_adPerp1 >= 0.0){
+                        /* Remove point c */
+                        remove_point(pos[1]);
+                        dir = (dot(ac, abxad) > 0.0)? -abxad: abxad;
+                        dir *= -dot(dir, a) / dir.length2();
+                        break;
+                    }
                 }
 
                 /* On acd side */
                 // The origin should be on acd's side and between the half-spaces defined by ac and ad (normal to acd)
-                if((dot(acxad, ab) * dot(acxad, a) > 0.0) && dot_acPerp1 <= 0.0 && dot_adPerp2 <= 0.0){
-                    /* Remove point b */
-                    remove_point(pos[0]);
-                    dir = (dot(ab, acxad) > 0.0)? -acxad: acxad;
-                    dir *= -dot(dir, a) / dir.length2();
-                    break;
+                {
+                    clam::Vec3d acxad = cross(ac, ad);
+                    if(dot(ab, acxad) * dot(a, acxad) > 0.0 && dot_acPerp1 >= 0.0 && dot_adPerp2 >= 0.0){
+                        /* Remove point b */
+                        remove_point(pos[0]);
+                        dir = (dot(ab, acxad) > 0.0)? -acxad: acxad;
+                        dir *= -dot(dir, a) / dir.length2();
+                        break;
+                    }
                 }
 
                 /* On bcd side */
-                Vec3d bcxbd = cross(c - b, d - b);
                 // The origin should be on bcd's side
-                if(dot(bcxbd, ab) * dot(bcxbd, b) < 0.0){
-                    /* Remove point a */
-                    remove_point(last_sb_);
-                    last_sb_ = pos[0];
-                    dir = (dot(ab, bcxbd) < 0.0)? -bcxbd: bcxbd;
-                    dir *= -dot(dir, b) / dir.length2();
-                    break;
+                {
+                    Vec3d bcxbd = cross(c - b, d - b);
+                    if(dot(bcxbd, ab) * dot(bcxbd, b) < 0.0){
+                        /* Remove point a */
+                        remove_point(last_sb_);
+                        last_sb_ = pos[0];
+                        dir = (dot(ab, bcxbd) < 0.0)? -bcxbd: bcxbd;
+                        dir *= -dot(dir, b) / dir.length2();
+                        break;
+                    }
                 }
 
                 /* 'else' should only be when the origin is inside the tetrahedron */
@@ -492,47 +497,47 @@ namespace overlap{
 
                 /* On abc side */
                 Vec3d abxac = cross(ab, ac);
-                Vec3d abcPerp = (dot(abxac, ad) > 0.0)? -abxac: abxac;
-                Vec3d abPerp1 = cross(abxac, ab);
-                Vec3d acPerp2 = cross(ac, abxac);
-                bool abPerp1Pos = (dot(abPerp1, a) > 0.0);
-                bool acPerp2Pos = (dot(acPerp2, a) > 0.0);
+                bool abPerp1Pos = (dot(cross(abxac, ab), a) > 0.0);
+                bool acPerp2Pos = (dot(cross(ac, abxac), a) > 0.0);
                 // The origin should be on abc's side and between the half-spaces defined by ac and ab (normal to abc)
-                if((dot(abcPerp, a) < 0.0) && !abPerp1Pos && !acPerp2Pos){
-                    /* Remove point d */
-                    remove_point(pos[2]);
-                    dir = abcPerp;
-                    break;
+                {
+                    Vec3d abcPerp = (dot(abxac, ad) > 0.0)? -abxac: abxac;
+                    if((dot(abcPerp, a) < 0.0) && !abPerp1Pos && !acPerp2Pos){
+                        /* Remove point d */
+                        remove_point(pos[2]);
+                        dir = abcPerp;
+                        break;
+                    }
                 }
 
                 /* On abd side */
                 Vec3d abxad = cross(ab, ad);
-                Vec3d abdPerp = (dot(abxad, ac) > 0.0)? -abxad: abxad;
-                Vec3d abPerp2 = cross(abxad, ab);
-                Vec3d adPerp1 = cross(ad, abxad);
-                bool abPerp2Pos = (dot(abPerp2, a) > 0.0);
-                bool adPerp1Pos = (dot(adPerp1, a) > 0.0);
+                bool abPerp2Pos = (dot(cross(abxad, ab), a) > 0.0);
+                bool adPerp1Pos = (dot(cross(ad, abxad), a) > 0.0);
                 // The origin should be on abd's side and between the half-spaces defined by ab and ad (normal to abd)
-                if((dot(abdPerp, a) < 0.0) && !abPerp2Pos && !adPerp1Pos){
-                    /* Remove point c */
-                    remove_point(pos[1]);
-                    dir = abdPerp;
-                    break;
+                {
+                    Vec3d abdPerp = (dot(abxad, ac) > 0.0)? -abxad: abxad;
+                    if((dot(abdPerp, a) < 0.0) && !abPerp2Pos && !adPerp1Pos){
+                        /* Remove point c */
+                        remove_point(pos[1]);
+                        dir = abdPerp;
+                        break;
+                    }
                 }
 
                 /* On acd side */
                 Vec3d acxad = cross(ac, ad);
-                Vec3d acdPerp = (dot(acxad, ab) > 0.0)? -acxad: acxad;
-                Vec3d acPerp1 = cross(acxad, ac);
-                Vec3d adPerp2 = cross(ad, acxad);
-                bool acPerp1Pos = (dot(acPerp1, a) > 0.0);
-                bool adPerp2Pos = (dot(adPerp2, a) > 0.0);
+                bool acPerp1Pos = (dot(cross(acxad, ac), a) > 0.0);
+                bool adPerp2Pos = (dot(cross(ad, acxad), a) > 0.0);
                 // The origin should be on acd's side and between the half-spaces defined by ac and ad (normal to acd)
-                if((dot(acdPerp, a) < 0.0) && !acPerp1Pos && !adPerp2Pos){
-                    /* Remove point b */
-                    remove_point(pos[0]);
-                    dir = acdPerp;
-                    break;
+                {
+                    Vec3d acdPerp = (dot(acxad, ab) > 0.0)? -acxad: acxad;
+                    if((dot(acdPerp, a) < 0.0) && !acPerp1Pos && !adPerp2Pos){
+                        /* Remove point b */
+                        remove_point(pos[0]);
+                        dir = acdPerp;
+                        break;
+                    }
                 }
 
                 ////////////////////* Edge Cases *///////////////////
@@ -585,8 +590,7 @@ namespace overlap{
                 ////////////////////* Edge Cases *///////////////////
 
                 /* Origin on the outside of triangle and close to ab */
-                Vec3d abPerp = cross(ab, abxac);
-                if(dot(abPerp, a) < 0.0){
+                if(dot(cross(ab, abxac), a) < 0.0){
                     dir = cross(cross(a, ab), ab);
                     /* Remove Point c */
                     remove_point(pos[1]);
@@ -594,8 +598,7 @@ namespace overlap{
                 }
 
                 /* Origin on the outside of triangle and close to ac */
-                Vec3d acPerp = cross(abxac, ac);
-                if(dot(acPerp, a) < 0.0){
+                if(dot(cross(abxac, ac), a) < 0.0){
                     dir = cross(cross(a, ac), ac);
                     /* Remove Point b */
                     remove_point(pos[0]);
@@ -647,24 +650,23 @@ namespace overlap{
 
         double dist2 = std::numeric_limits<double>::max();
 
-        while(++fail_safe < 2000){
+        do{
             auto vertex_a = pa.pos_ + pa.rot_.rotate(pa.size_ * a.support(inv_rot_a.rotate(dir)));
             auto vertex_b = pb.pos_ + pb.rot_.rotate(pb.size_ * b.support(inv_rot_b.rotate(-dir)));
             Vec3d new_point = vertex_a - vertex_b;// + ((feather > 0.0)? (feather / dir.length()) * dir: Vec3d(0.0));
 
-            if(S.contains(new_point) || dist2 + dot(dir, new_point) <= dist2 * 1.0e-8){
-                return -dir;
-            }
+            if(S.contains(new_point) || dist2 + dot(dir, new_point) <= dist2 * 1.0e-8) return -dir;
             S.add_point(new_point);
 
             S.closest(dir);
 
             dist2 = dir.length2();
 
-            if(S.size() == 4 || dist2 <= 1.0e-12) return 0.0;
-        }
+            if(S.size() == 4) return 0.0;
 
-        printf("Encountered error in GJK distance: Infinite Loop.\n Direction (%f, %f, %f)\n", dir[0], dir[1], dir[2]);
+        }while(++fail_safe < 2000 && dist2 > 1.0e-12);
+
+        if(fail_safe == 2000) printf("Encountered error in GJK distance: Infinite Loop.\n Direction (%f, %f, %f)\n", dir[0], dir[1], dir[2]);
 
         return -dir;
     }
@@ -685,7 +687,7 @@ namespace overlap{
 
         double dist2 = std::numeric_limits<double>::max();
 
-        while(++fail_safe < 2000){
+        do{
             auto vertex_a = pa.pos_ + pa.rot_.rotate(pa.size_ * a.support(inv_rot_a.rotate(dir)));
             auto vertex_b = pb.pos_ + pb.rot_.rotate(pb.size_ * b.support(inv_rot_b.rotate(-dir)));
             Vec3d new_point = vertex_a - vertex_b;
@@ -701,11 +703,14 @@ namespace overlap{
 
             dist2 = dir.length2();
 
-            if(S.size() == 4 || dist2 <= 1.0e-12) return 0.0;
-        }
+            if(S.size() == 4) return 0.0;
 
-        printf("Encountered error in GJK closest points: Infinite Loop.\n Direction (%f, %f, %f)\n", dir[0], dir[1], dir[2]);
-        return 0.0;
+        }while(++fail_safe < 2000 && dist2 > 1.0e-12);
+
+        if(fail_safe == 2000) printf("Encountered error in GJK closest points: Infinite Loop.\n Direction (%f, %f, %f)\n", dir[0], dir[1], dir[2]);
+
+        S.compute_closest_points(-dir, point_on_a, point_on_b);
+        return -dir;
     }
 
 
@@ -722,7 +727,7 @@ namespace overlap{
         auto inv_rot_a = pa.rot_.inv();
         auto inv_rot_b = pb.rot_.inv();
 
-        while(fail_safe++ < 30){
+        do{
             auto vertex_a = pa.pos_ + pa.rot_.rotate(pa.size_ * a.support(inv_rot_a.rotate(dir)));
             auto vertex_b = pb.pos_ + pb.rot_.rotate(pb.size_ * b.support(inv_rot_b.rotate(-dir)));
             Vec3d new_point = vertex_a - vertex_b + ((feather > 0.0)? (feather / dir.length()) * dir: Vec3d(0.0));
@@ -730,7 +735,7 @@ namespace overlap{
             if(dn < 0.0 || S.contains(new_point)) return false;
             S.add_point(new_point);
             if(S.contains_origin(dir) || dir.length2() == 0.0) return true;
-        }
+        }while(fail_safe++ < 30);
 
         printf("Encountered error in GJK boolean: Infinite Loop.\n Direction (%f, %f, %f)\n", dir[0], dir[1], dir[2]);
 
@@ -759,7 +764,7 @@ namespace overlap{
 
         double dist2 = std::numeric_limits<double>::max();
 
-        while(fail_safe++ < 1000){
+        do{
             auto vertex_a = pa.pos_ + pa.rot_.rotate(pa.size_ * a.support(inv_rot_a.rotate(dir)));
             auto vertex_b = pb.pos_ + pb.rot_.rotate(pb.size_ * b.support(inv_rot_b.rotate(-dir)));
             Vec3d new_point = vertex_a - vertex_b;
@@ -786,7 +791,7 @@ namespace overlap{
                 distance = lambda;
                 return true;
             }
-        }
+        }while(fail_safe++ < 1000);
         distance = lambda;
         printf("Encountered error in GJK raycast: Infinite Loop.\n Direction (%f, %f, %f)\n", dir[0], dir[1], dir[2]);
         return false;

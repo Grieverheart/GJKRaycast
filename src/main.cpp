@@ -71,11 +71,12 @@ bool conservative_advancement(const Transform& pa, const shape::Convex& a, const
     temp_pa.pos_ = 0.0;
     clam::Vec3d dir = -ray_dir;
 
+    double prev_distance = 0.0;
     while(true){
         clam::Vec3d shortest_dist = overlap::gjk_distance(temp_pa, a, temp_pb, b);
         double shortest_distance = shortest_dist.length();
 
-        if(shortest_distance < 2.0 * tolerance){
+        if(shortest_distance < prev_distance && shortest_distance < 2.0 * tolerance){
             int iter = 0;
             while(shortest_distance < 2.0 * tolerance){
                 temp_pb.pos_ -= dir * 0.001 * distance_;
@@ -104,6 +105,7 @@ bool conservative_advancement(const Transform& pa, const shape::Convex& a, const
         distance_ += max_advance;
         if(distance_ <= 0.0 || distance_ > 10.0) break;
         temp_pb.pos_ += dir * max_advance;
+        prev_distance = shortest_distance;
     }
 
     return false;

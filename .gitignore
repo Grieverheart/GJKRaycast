@@ -2,3 +2,4 @@
 bin/
 *.swp
 main
+.DS_store

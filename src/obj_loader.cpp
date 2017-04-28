@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cassert>
 
 namespace{
     using uchar = unsigned char;
@@ -34,7 +35,7 @@ namespace{
     }
 }
 
-bool load_obj(const char* filepath, std::vector<clam::Vec3d>& vertices, std::vector<std::vector<unsigned int>>& faces){
+bool load_obj(const char* filepath, std::vector<double>& vertices, std::vector<std::vector<unsigned int>>& faces){
     FILE* file;
     char line[128];
 
@@ -47,13 +48,13 @@ bool load_obj(const char* filepath, std::vector<clam::Vec3d>& vertices, std::vec
             switch(line[1]){
             case ' ':{
                 const char* next = line + 2;
-                clam::Vec3d v;
-                for(int i = 0; *next != '\0'; ++i){
+                int i;
+                for(i = 0; *next != '\0'; ++i){
                     char buff[32];
                     next = getNextWord(next, buff);
-                    v[i] = atof(buff);
+                    vertices.push_back(atof(buff));
                 }
-                vertices.push_back(v);
+                assert(i == 3);
                 break;
             }
             default:

@@ -1,11 +1,8 @@
 #include <cstdio>
-#include <cstring>
-#include <unistd.h>
-#include "shape/shapes.h"
-#include "shape/variant.h"
-#include "overlap/overlap.h"
-#include "overlap/gjk.h"
-#include "obj_loader.h"
+//#include "obj_loader.h"
+
+#define NTCD_IMPLEMENTATION
+#include "ntcd.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -58,87 +55,6 @@ inline void save_bmp(const u32* pixels, int width, int height, const char* filen
     fclose(fp);
 }
 
-constexpr double tolerance = 1.0e-12;
-
-bool conservative_advancement(const Transform& pa, const shape::Convex& a, const Transform& pb, const shape::Convex& b, const clam::Vec3d& ray_dir, double& distance, clam::Vec3d& normal){
-
-    double distance_ = 0.0;
-    double max_advance = 0.0;
-    Transform temp_pb = pb;
-    Transform temp_pa = pa;
-
-    temp_pb.pos_ = temp_pb.pos_ - temp_pa.pos_;
-    temp_pa.pos_ = 0.0;
-    clam::Vec3d dir = -ray_dir;
-
-    double prev_distance = 0.0;
-    while(true){
-        clam::Vec3d shortest_dist = overlap::gjk_distance(temp_pa, a, temp_pb, b);
-        double shortest_distance = shortest_dist.length();
-
-        if(shortest_distance < prev_distance && shortest_distance < 2.0 * tolerance){
-            int iter = 0;
-            while(shortest_distance < 2.0 * tolerance){
-                temp_pb.pos_ -= dir * 0.001 * distance_;
-                distance_ *= 0.999;
-                shortest_dist = overlap::gjk_distance(temp_pa, a, temp_pb, b);
-                shortest_distance = shortest_dist.length();
-                //NOTE: This should alsmost never happen.
-                if(iter++ > 1000){
-                    printf("Error!\n");
-                    return false;
-                }
-            }
-
-            shortest_dist = overlap::gjk_distance(temp_pa, a, temp_pb, b);
-            normal = -shortest_dist / shortest_distance;
-            distance = distance_;
-            return true;
-        }
-
-        /* Conservative advancement by Mirtich 1996 PhD Thesis */
-        double max_vel = clam::dot(shortest_dist, dir);
-        if(max_vel <= 0.0) break;
-        max_vel /= shortest_distance;
-
-        max_advance = (shortest_distance - tolerance) / max_vel;
-        distance_ += max_advance;
-        if(distance_ <= 0.0 || distance_ > 10.0) break;
-        temp_pb.pos_ += dir * max_advance;
-        prev_distance = shortest_distance;
-    }
-
-    return false;
-}
-
-bool boolean_advancement(const Transform& pa, const shape::Convex& a, const Transform& pb, const shape::Convex& b, const clam::Vec3d& ray_dir, double& distance, clam::Vec3d& normal){
-
-    double distance_ = 0.0;
-    Transform temp_pb = pb;
-    Transform temp_pa = pa;
-
-    temp_pb.pos_ = temp_pb.pos_ - temp_pa.pos_;
-    temp_pa.pos_ = 0.0;
-    clam::Vec3d dir = -ray_dir;
-
-    double feather = 7.0;
-
-    while(true){
-        if(overlap::gjk_boolean(temp_pa, a, temp_pb, b)) return true;
-
-        if(feather <= 0.1){
-          if(overlap::gjk_boolean(temp_pa, a, temp_pb, b)) return true;
-        }
-        else while(overlap::gjk_boolean(temp_pa, a, temp_pb, b, feather)) feather *= 0.8;
-
-        distance_ += feather;
-        if(distance_ > 10.0) break;
-        temp_pb.pos_ += dir * feather;
-    }
-
-    return false;
-}
-
 int main(int argc, char *argv[]){
 
     int width = 1800;
@@ -148,73 +64,89 @@ int main(int argc, char *argv[]){
     double screen_width = 12.0;
     double screen_height = 12.0;
 
-    clam::Vec3d sun_dir(0.2, -1.0, -1.5);
-    sun_dir /= sun_dir.length();
+    double sun_dir[] = {0.2, -1.0, -1.5};
+    {
+        double length = ntcd__vec3_length(sun_dir);
+        for(int i = 0; i < 3; ++i) sun_dir[i] /= length;
+    }
 
     u32* screen = new u32[n_pixels];
     for(int p = 0; p < n_pixels; ++p) screen[p] = rgba(255, 255, 255, 0);
 
-    //std::vector<clam::Vec3d> vertices;
-    //std::vector<std::vector<unsigned int>> faces;
-    //load_obj("obj/cone.obj", vertices, faces);
-    //auto cone = shape::Polyhedron(vertices, faces);
-    //auto point = shape::Polyhedron(vertices, faces);
+    ntcd_line line;
+    ntcd_sphere sphere;
 
-    auto cone = shape::Hull({
-        {
-            {
-                clam::Vec3d(-1.0 / sqrt(2.0), 0.0, 0.0),
-                clam::Quatd(0.0, 0.0, 0.0, 1.0),
-                1.0,
-            },
-            std::shared_ptr<shape::Variant>(new shape::Variant(shape::Disk()))
-        },
-        {
-            {
-                clam::Vec3d(1.0 / sqrt(2.0), 0.0, 0.0),
-                clam::fromAxisAngle(0.5 * M_PI, clam::Vec3d(1.0, 0.0, 0.0)),
-                1.0,
-            },
-            std::shared_ptr<shape::Variant>(new shape::Variant(shape::Disk()))
-        }
-    });
-    auto point = shape::Point();
+    ntcd_line_initialize(&line);
+    ntcd_sphere_initialize(&sphere);
 
-    auto axis = clam::Vec3d(1.0, 0.0, 1.0);
-    axis /= axis.length();
-    auto xform_cone = Transform{
-        clam::Vec3d(0.0),
-        clam::Quatd(0.0, 0.0, 0.0, 1.0),
-        1.0,
+    ntcd_minkowski_sum msum;
+    {
+        auto xform = ntcd_transform{
+            {0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 1.0},
+            3.0
+        };
+
+        ntcd_minkowski_sum_initialize(&msum, &xform, &sphere, &line);
+    }
+
+    ntcd_point point;
+    ntcd_point_initialize(&point);
+
+    //ntcd_mesh sphere;
+    //{
+    //    std::vector<double> vertices;
+    //    std::vector<std::vector<unsigned int>> faces;
+    //    load_obj("obj/sphere.obj", vertices, faces);
+    //    std::vector<unsigned int> faces_;
+    //    std::vector<unsigned int> face_start_;
+    //    unsigned int i = 0;
+    //    for(auto face: faces){
+    //        face_start_.push_back(i);
+    //        for(auto vid: face){
+    //            faces_.push_back(vid);
+    //            ++i;
+    //        }
+    //    }
+    //    ntcd_mesh_initialize(&sphere, vertices.size(), vertices.data(), faces.size(), face_start_.data(), faces_.data());
+    //}
+
+    auto xform_a = ntcd_transform{
+        {0.0, 0.0, 0.0},
+        {0.0, 0.0, 0.0, 1.0},
+        1.0
     };
 
-    auto xform_point = Transform{
-        clam::Vec3d(0.0),
-        clam::Quatd(0.0, 0.0, 0.0, 1.0),
-        1.0,
+    auto xform_b = ntcd_transform{
+        {0.0, 0.0, 0.0},
+        {0.0, 0.0, 0.0, 1.0},
+        1.0
     };
 
-    auto ray_dir = clam::Vec3d(0.0, -0.2, -1.0);
+    double ray_dir[] = {0.0, -0.2, -1.0};
 
     for(int h = 0; h < height; ++h){
         for(int w = 0; w < width; ++w){
-            xform_point.pos_ = clam::Vec3d((double(w) / width - 0.5) * screen_width, (double(h) / height - 0.5) * screen_height, 5.0);
+
+            double pos[] = {(double(w) / width - 0.5) * screen_width, (double(h) / height - 0.5) * screen_height, 5.0};
+            memcpy(xform_a.pos, pos, 3 * sizeof(double));
+            double normal[3];
             double distance = 1000000.0;
-            clam::Vec3d normal;
-            bool ray_hit = overlap::gjk_raycast(xform_point, point, xform_cone, cone, ray_dir, distance, normal);
-            //bool ray_hit = conservative_advancement(xform_point, point, xform_cone, cone, ray_dir, distance, normal);
-            //bool ray_hit = boolean_advancement(xform_point, point, xform_cone, cone, ray_dir, distance, normal);
+            int ray_hit = ntcd_gjk_raycast(&distance, normal, &xform_a, &point, &xform_b, &msum, ray_dir);
+
             if(ray_hit){
-                //double factor = 1.0;
-                clam::Vec3d reflected = sun_dir - 2.0 * clam::dot(sun_dir, normal) * normal;
-                double spec = clam::dot(reflected, ray_dir);
-                double factor = std::max(clam::dot(sun_dir, normal), 0.0) + 4.0 * (clam::dot(sun_dir, normal) > 0.0) * pow(spec, 64.0);
-                screen[h * width + w] = rgba(std::min(255.0, factor * 255.0), std::min(255.0, factor * 120.0), std::min(255.0, factor * 50.0), 255);
+                double reflected[3];
+                ntcd__vec3_fmadd(reflected, -2.0 * ntcd__vec3_dot(sun_dir, normal), normal, sun_dir);
+                double spec = ntcd__vec3_dot(reflected, ray_dir);
+                double factor = fmax(ntcd__vec3_dot(sun_dir, normal), 0.0) + 4.0 * (ntcd__vec3_dot(sun_dir, normal) > 0.0) * pow(spec, 64.0);
+                screen[h * width + w] = rgba(fmin(255.0, factor * 255.0), fmin(255.0, factor * 255.0), fmin(255.0, factor * 255.0), 255);
             }
         }
     }
 
     save_bmp(screen, width, height, "temp.bmp");
+
+    delete[] screen;
 
     return 0;
 }

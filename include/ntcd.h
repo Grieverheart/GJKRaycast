@@ -1,9 +1,53 @@
+// MIT License
+// 
+// Copyright (c) 2017 Nikos Tasios
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#ifdef NTCD_IMPLEMENTATION
+
+#ifndef NTCD_GJK_ERROR_TOLERANCE 
+#include <float.h>
+#define NTCD_GJK_ERROR_TOLERANCE 10.0 * DBL_EPSILON
+#endif
+
+#ifndef NTCD_GJK_RELATIVE_ERROR 
+#define NTCD_GJK_RELATIVE_ERROR 1.0e-4
+#define NTCD_GJK_RELATIVE_ERROR2 NTCD_GJK_RELATIVE_ERROR * NTCD_GJK_RELATIVE_ERROR
+#endif
+
+#endif
+
 //Interface
 #ifndef __NTCD_H__
 #define __NTCD_H__
 
-//TODO: Define tolerances as macros.
-//TODO: Investigate raycast false positives on y-axis.
+//TODO: Investigate raycast false positives on y-axis for cylinders.
+//TODO: Impelement EPA for penetration depth.
+//TODO: Implement Johnson's dstance algorithm as an alternative.
+//TODO: Add MPR?
+
+#ifdef NTCD_STATIC
+#define NTCD_DEF static
+#else
+#define NTCD_DEF extern
+#endif
 
 #ifdef __cplusplus
 extern "C"{
@@ -18,10 +62,10 @@ typedef struct{
 
 typedef void (*ntcd_support)(double*, const void*, const double*);
 
-int ntcd_gjk_boolean(const ntcd_transform*, const void*, const ntcd_transform*, const void*);
-void ntcd_gjk_distance(double* dist_vec, const ntcd_transform*, const void*, const ntcd_transform*, const void*);
-void ntcd_gjk_closest_points(double* point_on_a, double* point_on_b, const ntcd_transform*, const void*, const ntcd_transform*, const void*);
-int ntcd_gjk_raycast(double* distance, double* normal, const ntcd_transform*, const void*, const ntcd_transform*, const void*, const double* ray_dir);
+NTCD_DEF int ntcd_gjk_boolean(const ntcd_transform*, const void*, const ntcd_transform*, const void*);
+NTCD_DEF void ntcd_gjk_distance(double* dist_vec, const ntcd_transform*, const void*, const ntcd_transform*, const void*);
+NTCD_DEF void ntcd_gjk_closest_points(double* point_on_a, double* point_on_b, const ntcd_transform*, const void*, const ntcd_transform*, const void*);
+NTCD_DEF int ntcd_gjk_raycast(double* distance, double* normal, const ntcd_transform*, const void*, const ntcd_transform*, const void*, const double* ray_dir);
 
 //Shapes
 //NOTE: The long axis of a shape is defined to be along the y axis.
@@ -34,25 +78,25 @@ int ntcd_gjk_raycast(double* distance, double* normal, const ntcd_transform*, co
 typedef struct{
     ntcd_support support;
 }ntcd_sphere;
-void ntcd_sphere_initialize(ntcd_sphere* sph);
+NTCD_DEF void ntcd_sphere_initialize(ntcd_sphere* sph);
 
 //Point
 typedef struct{
     ntcd_support support;
 }ntcd_point;
-void ntcd_point_initialize(ntcd_point* point);
+NTCD_DEF void ntcd_point_initialize(ntcd_point* point);
 
 //Line
 typedef struct{
     ntcd_support support;
 }ntcd_line;
-void ntcd_line_initialize(ntcd_line* line);
+NTCD_DEF void ntcd_line_initialize(ntcd_line* line);
 
 //Disk
 typedef struct{
     ntcd_support support;
 }ntcd_disk;
-void ntcd_disk_initialize(ntcd_disk* disk);
+NTCD_DEF void ntcd_disk_initialize(ntcd_disk* disk);
 
 //Mesh
 typedef struct{
@@ -62,22 +106,22 @@ typedef struct{
     unsigned int* n_vert_neighbours_;
     unsigned int** vert_neighbours_;
 }ntcd_mesh;
-void ntcd_mesh_initialize(ntcd_mesh* mesh, const unsigned int n_vertices, const double* vertices, const unsigned int n_faces, const unsigned int* face_start, const unsigned int* faces);
-void ntcd_mesh_terminate(ntcd_mesh* mesh);
+NTCD_DEF void ntcd_mesh_initialize(ntcd_mesh* mesh, const unsigned int n_vertices, const double* vertices, const unsigned int n_faces, const unsigned int* face_start, const unsigned int* faces);
+NTCD_DEF void ntcd_mesh_terminate(ntcd_mesh* mesh);
 
 //Cylinder
 typedef struct{
     ntcd_support support;
     double base_radius_, half_height_;
 }ntcd_cylinder;
-void ntcd_cylinder_initialize(ntcd_cylinder* cyl, double base_radius, double height);
+NTCD_DEF void ntcd_cylinder_initialize(ntcd_cylinder* cyl, double base_radius, double height);
 
 //Box
 typedef struct{
     ntcd_support support;
     double extent_[3];
 }ntcd_box;
-void ntcd_box_initialize(ntcd_box* box, const double* extent);
+NTCD_DEF void ntcd_box_initialize(ntcd_box* box, const double* extent);
 
 //Cone
 typedef struct{
@@ -85,7 +129,7 @@ typedef struct{
     double base_radius_, half_height_;
     double sintheta_;
 }ntcd_cone;
-void ntcd_cone_initialize(ntcd_cone* cone, double base_radius, double height);
+NTCD_DEF void ntcd_cone_initialize(ntcd_cone* cone, double base_radius, double height);
 
 //Bicone
 typedef struct{
@@ -93,7 +137,7 @@ typedef struct{
     double base_radius_, half_height_;
     double sintheta_;
 }ntcd_bicone;
-void ntcd_bicone_initialize(ntcd_bicone* bicone, double base_radius, double height);
+NTCD_DEF void ntcd_bicone_initialize(ntcd_bicone* bicone, double base_radius, double height);
 
 //Leaf Cylinder
 typedef struct{
@@ -101,14 +145,14 @@ typedef struct{
     double half_width_, half_length_, half_height_;
     double circle_radius_, circle_distance_;
 }ntcd_leaf_cylinder;
-void ntcd_leaf_cylinder_initialize(ntcd_leaf_cylinder* leaf, double width, double length, double height);
+NTCD_DEF void ntcd_leaf_cylinder_initialize(ntcd_leaf_cylinder* leaf, double width, double length, double height);
 
 //Sphere-swept
 typedef struct{
     ntcd_support support;
     const void* shape_;
 }ntcd_sphere_swept;
-void ntcd_sphere_swept_initialize(ntcd_sphere_swept* msum, const void* shape);
+NTCD_DEF void ntcd_sphere_swept_initialize(ntcd_sphere_swept* msum, const void* shape);
 
 //Hull
 typedef struct{
@@ -121,7 +165,7 @@ typedef struct{
     double inv_rot_a_[4];
     double inv_rot_b_[4];
 }ntcd_hull;
-void ntcd_hull_initialize(ntcd_hull* hull, const ntcd_transform* ta, const void* ca, const ntcd_transform* tb, const void* cb);
+NTCD_DEF void ntcd_hull_initialize(ntcd_hull* hull, const ntcd_transform* ta, const void* ca, const ntcd_transform* tb, const void* cb);
 
 //Minkowski
 typedef struct{
@@ -132,7 +176,7 @@ typedef struct{
     //Cache inverse rotation.
     double inv_rot_[4];
 }ntcd_minkowski_sum;
-void ntcd_minkowski_sum_initialize(ntcd_minkowski_sum* msum, const ntcd_transform* t, const void* ca, const void* cb);
+NTCD_DEF void ntcd_minkowski_sum_initialize(ntcd_minkowski_sum* msum, const ntcd_transform* t, const void* ca, const void* cb);
 
 #ifdef __cplusplus
 }
@@ -196,69 +240,69 @@ int main(int argc, char* argv[]){
 
 #include <string.h>
 #include <math.h>
-#include <float.h>
 #include <stdlib.h>
+#include <float.h>
 
 #define BARY_GEPP
 
 //Vectors
-static inline double ntcd__vec3_dot(const double* a, const double* b){
+static double ntcd__vec3_dot(const double* a, const double* b){
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-static inline void ntcd__vec3_cross(double* c, const double* a, const double* b){
+static void ntcd__vec3_cross(double* c, const double* a, const double* b){
     c[0] = a[1] * b[2] - a[2] * b[1];
     c[1] = a[2] * b[0] - a[0] * b[2];
     c[2] = a[0] * b[1] - a[1] * b[0];
 }
 
 //Calculates d = (a x b) x c
-static inline void ntcd__vec3_triple_product(double* d, const double* a, const double* b, const double* c){
+static void ntcd__vec3_triple_product(double* d, const double* a, const double* b, const double* c){
     d[0] = b[0] * ntcd__vec3_dot(a, c) - a[0] * ntcd__vec3_dot(b, c);
     d[1] = b[1] * ntcd__vec3_dot(a, c) - a[1] * ntcd__vec3_dot(b, c);
     d[2] = b[2] * ntcd__vec3_dot(a, c) - a[2] * ntcd__vec3_dot(b, c);
 }
 
-static inline void ntcd__vec3_add(double*c, const double* a, const double* b){
+static void ntcd__vec3_add(double*c, const double* a, const double* b){
     c[0] = a[0] + b[0];
     c[1] = a[1] + b[1];
     c[2] = a[2] + b[2];
 }
 
-static inline void ntcd__vec3_sub(double* c, const double* a, const double* b){
+static void ntcd__vec3_sub(double* c, const double* a, const double* b){
     c[0] = a[0] - b[0];
     c[1] = a[1] - b[1];
     c[2] = a[2] - b[2];
 }
 
-static inline void ntcd__vec3_smul(double* c, double f, const double* a){
+static void ntcd__vec3_smul(double* c, double f, const double* a){
     c[0] = f * a[0];
     c[1] = f * a[1];
     c[2] = f * a[2];
 }
 
-static inline void ntcd__vec3_fmadd(double* c, double a, const double* x, const double* y){
+static void ntcd__vec3_fmadd(double* c, double a, const double* x, const double* y){
     c[0] = a * x[0] + y[0];
     c[1] = a * x[1] + y[1];
     c[2] = a * x[2] + y[2];
 }
 
-static inline double ntcd__vec3_length2(const double* vec){
+static double ntcd__vec3_length2(const double* vec){
     return vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
 }
 
-static inline double ntcd__vec3_length(const double* vec){
+static double ntcd__vec3_length(const double* vec){
     return sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
 }
 
 //TODO: Try memcmp performance
-static inline int ntcd__vec3_equal(const double* a, const double* b){
+static int ntcd__vec3_equal(const double* a, const double* b){
     return (a[0] == b[0]) && (a[1] == b[1]) && (a[2] == b[2]);
 }
 
 // Quaternions
 //TODO: Do we really need to calculate the length? Aren't all quaternions assumed of unit length?
-static inline void ntcd__quat_inverse(double* r, const double* q){
+static void ntcd__quat_inverse(double* r, const double* q){
     double ilength2 = 1.0  / (q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
     r[0] = -q[0] * ilength2;
     r[1] = -q[1] * ilength2;
@@ -266,7 +310,7 @@ static inline void ntcd__quat_inverse(double* r, const double* q){
     r[3] =  q[3] * ilength2;
 }
 
-static inline void ntcd__quat_vec3_rotate(double* r, const double* q, const double* v){
+static void ntcd__quat_vec3_rotate(double* r, const double* q, const double* v){
     double u[3];
     {
         double a[3], b[3];
@@ -298,13 +342,13 @@ static const unsigned char p_pos[16][3] =
 };
 
 #if defined(BARY_ERICSON)
-static inline double triangle_area_2D(double x1, double y1, double x2, double y2, double x3, double y3){
+static double triangle_area_2D(double x1, double y1, double x2, double y2, double x3, double y3){
     return (x1 - x2) * (y2 - y3) - (x2 - x3) * (y1 - y2);
 }
 
 //Algorithm for calculating barycentric coordinates from
 //'Real-time collision detection' by Christer Ericson.
-static inline void barycentric_coordinates(double* R, const double* P, const double* A, const double* B, const double* C){
+static void barycentric_coordinates(double* R, const double* P, const double* A, const double* B, const double* C){
     double u, v, w;
 
     double m[3];
@@ -340,7 +384,7 @@ static inline void barycentric_coordinates(double* R, const double* P, const dou
 }
 
 #elif defined(BARY_CRAMER)
-static inline void barycentric_coordinates(double* R, const double* P, const double* A, const double* B, const double* C){
+static void barycentric_coordinates(double* R, const double* P, const double* A, const double* B, const double* C){
     double v0[3], v1[3], v2[3];
     ntcd__vec3_sub(v0, B, A);
     ntcd__vec3_sub(v1, C, A);
@@ -358,7 +402,7 @@ static inline void barycentric_coordinates(double* R, const double* P, const dou
     R[2] = 1.0 - R[0] - R[1];
 }
 #elif defined(BARY_GEPP)
-static inline void barycentric_coordinates(double* R, const double* P, const double* A, const double* B, const double* C){
+static void barycentric_coordinates(double* R, const double* P, const double* A, const double* B, const double* C){
     double v0[3], v1[3], v2[3];
     ntcd__vec3_sub(v0, B, A);
     ntcd__vec3_sub(v1, C, A);
@@ -387,7 +431,7 @@ typedef struct{
     double max_vert2_;
 }ntcd__simplex;
 
-static inline void ntcd__simplex_initialize(ntcd__simplex* simplex){
+static void ntcd__simplex_initialize(ntcd__simplex* simplex){
     simplex->bits_      = 0;
     simplex->last_sb_   = 0;
     simplex->size_      = 0;
@@ -402,7 +446,7 @@ static inline void ntcd__simplex_initialize(ntcd__simplex* simplex){
 //    }
 //}
 
-static inline void ntcd__simplex_add_point(ntcd__simplex* simplex, const double* point){
+static void ntcd__simplex_add_point(ntcd__simplex* simplex, const double* point){
     unsigned char b = ~simplex->bits_; //Flip bits
     b &= -b; //Last set (available) bit
     unsigned char pos = s_pos[b]; //Get the bit position from the lookup table
@@ -414,18 +458,18 @@ static inline void ntcd__simplex_add_point(ntcd__simplex* simplex, const double*
     if(l2 > simplex->max_vert2_) simplex->max_vert2_ = l2;
 }
 
-static inline void ntcd__simplex_add_point_with_info(ntcd__simplex* simplex, const double* point, const double* pa, const double* pb){
+static void ntcd__simplex_add_point_with_info(ntcd__simplex* simplex, const double* point, const double* pa, const double* pb){
     ntcd__simplex_add_point(simplex, point);
     memcpy(simplex->a_ + 3 * simplex->last_sb_, pa, 3 * sizeof(*pa));
     memcpy(simplex->b_ + 3 * simplex->last_sb_, pb, 3 * sizeof(*pb));
 }
 
-static inline void ntcd__simplex_remove_point(ntcd__simplex* simplex, int p){
+static void ntcd__simplex_remove_point(ntcd__simplex* simplex, int p){
     simplex->bits_ ^= (1 << p); //Erase the bit at position p
     --simplex->size_;
 }
 
-static inline int ntcd__simplex_contains(const ntcd__simplex* simplex, const double* point){
+static int ntcd__simplex_contains(const ntcd__simplex* simplex, const double* point){
     unsigned char bits = simplex->bits_;
     for(int i = 0; i < 4; ++i, bits >>= 1){
         if((bits & 1) && ntcd__vec3_equal(simplex->p_ + 3 * i, point)) return 1;
@@ -433,7 +477,7 @@ static inline int ntcd__simplex_contains(const ntcd__simplex* simplex, const dou
     return 0;
 }
 
-static inline void ntcd__simplex_translate(ntcd__simplex* simplex, const double* dr){
+static void ntcd__simplex_translate(ntcd__simplex* simplex, const double* dr){
     //for(int k = 0; k < 4; ++k) p_[k] += dr;
     simplex->max_vert2_ = 0.0;
     unsigned char bits = simplex->bits_;
@@ -926,7 +970,7 @@ static int ntcd__simplex_contains_origin(ntcd__simplex* simplex, double* dir){
     return 0;
 }
 
-int ntcd_gjk_boolean(
+NTCD_DEF int ntcd_gjk_boolean(
     const ntcd_transform* pa, const void* ca,
     const ntcd_transform* pb, const void* cb
 ){
@@ -977,11 +1021,12 @@ int ntcd_gjk_boolean(
     return 1;
 }
 
-void ntcd_gjk_distance(
+NTCD_DEF void ntcd_gjk_distance(
     double* dist,
     const ntcd_transform* pa, const void* ca,
     const ntcd_transform* pb, const void* cb
 ){
+
     double inv_rot_a[4], inv_rot_b[4];
     ntcd__quat_inverse(inv_rot_a, pa->rot);
     ntcd__quat_inverse(inv_rot_b, pb->rot);
@@ -1019,7 +1064,7 @@ void ntcd_gjk_distance(
         double new_point[3];
         ntcd__vec3_sub(new_point, vertex_a, vertex_b);
 
-        if(ntcd__simplex_contains(&simplex, new_point) || dist2 - ntcd__vec3_dot(dir, new_point) <= dist2 * 1.0e-8){
+        if(ntcd__simplex_contains(&simplex, new_point) || dist2 - ntcd__vec3_dot(dir, new_point) <= dist2 * NTCD_GJK_RELATIVE_ERROR2){
             memcpy(dist, dir, 3 * sizeof(*dist));
             return;
         }
@@ -1029,7 +1074,7 @@ void ntcd_gjk_distance(
 
         dist2 = ntcd__vec3_length2(dir);
 
-        if(simplex.size_ == 4 || dist2 < 1.0e-12){
+        if(simplex.size_ == 4 || dist2 < NTCD_GJK_ERROR_TOLERANCE * simplex.max_vert2_){
             memset(dist, 0, 3 * sizeof(*dist));
             return;
         }
@@ -1041,7 +1086,7 @@ void ntcd_gjk_distance(
     memcpy(dist, dir, 3 * sizeof(*dist));
 }
 
-void ntcd_gjk_closest_points(
+NTCD_DEF void ntcd_gjk_closest_points(
     double* point_on_a, double* point_on_b,
     const ntcd_transform* pa, const void* ca,
     const ntcd_transform* pb, const void* cb
@@ -1083,7 +1128,7 @@ void ntcd_gjk_closest_points(
         double new_point[3];
         ntcd__vec3_sub(new_point, vertex_a, vertex_b);
 
-        if(ntcd__simplex_contains(&simplex, new_point) || dist2 - ntcd__vec3_dot(dir, new_point) <= dist2 * 1.0e-8){
+        if(ntcd__simplex_contains(&simplex, new_point) || dist2 - ntcd__vec3_dot(dir, new_point) <= dist2 * NTCD_GJK_RELATIVE_ERROR2){
             ntcd__simplex_compute_closest_points(&simplex, point_on_a, point_on_b, dir);
             return;
         }
@@ -1094,7 +1139,7 @@ void ntcd_gjk_closest_points(
 
         dist2 = ntcd__vec3_length2(dir);
 
-        if(simplex.size_ == 4 || dist2 < 1.0e-12){
+        if(simplex.size_ == 4 || dist2 < NTCD_GJK_ERROR_TOLERANCE * simplex.max_vert2_){
             memset(point_on_a, 0, 3 * sizeof(*point_on_a));
             memset(point_on_b, 0, 3 * sizeof(*point_on_b));
             return;
@@ -1108,15 +1153,13 @@ void ntcd_gjk_closest_points(
 }
 
 //TODO: Do we need some way to check if a specific point has been already added to the simplex.
-int ntcd_gjk_raycast(
+NTCD_DEF int ntcd_gjk_raycast(
     double* distance, double* normal,
     const ntcd_transform* pa, const void* ca,
     const ntcd_transform* pb, const void* cb,
     const double* ray_dir
 )
 {
-    static const double etol = 10.0 * DBL_EPSILON;
-
     double inv_rot_a[4], inv_rot_b[4];
     ntcd__quat_inverse(inv_rot_a, pa->rot);
     ntcd__quat_inverse(inv_rot_b, pb->rot);
@@ -1168,7 +1211,6 @@ int ntcd_gjk_raycast(
             lambda -= delta;
             if(lambda > *distance) return 0;
             ntcd__vec3_smul(x, -lambda, ray_dir);
-            if(ntcd__vec3_length2(x) > 100.0) return 0;
             ntcd__vec3_smul(normal, -1.0 / ntcd__vec3_length(dir), dir);
             double dr[3];
             ntcd__vec3_smul(dr, -delta, ray_dir);
@@ -1180,7 +1222,7 @@ int ntcd_gjk_raycast(
 
         dist2 = ntcd__vec3_length2(dir);
 
-        if(simplex.size_ == 4 || dist2 < etol * simplex.max_vert2_){
+        if(simplex.size_ == 4 || dist2 < NTCD_GJK_ERROR_TOLERANCE * simplex.max_vert2_){
             *distance = lambda;
             return 1;
         }
@@ -1211,7 +1253,7 @@ static void ntcd__support_cylinder(double* support_point, const void* shape, con
     }
 }
 
-void ntcd_cylinder_initialize(ntcd_cylinder* cyl, double base_radius, double height){
+NTCD_DEF void ntcd_cylinder_initialize(ntcd_cylinder* cyl, double base_radius, double height){
     cyl->support      = ntcd__support_cylinder;
     cyl->base_radius_ = base_radius;
     cyl->half_height_ = 0.5 * height;
@@ -1225,7 +1267,7 @@ static void ntcd__support_box(double* support_point, const void* shape, const do
     support_point[2] = copysign(extent[2], dir[2]);
 }
 
-void ntcd_box_initialize(ntcd_box* box, const double* extent){
+NTCD_DEF void ntcd_box_initialize(ntcd_box* box, const double* extent){
     box->support = ntcd__support_box;
     memcpy(box->extent_, extent, 3 * sizeof(*extent));
 }
@@ -1253,7 +1295,7 @@ static void ntcd__support_cone(double* support_point, const void* shape, const d
     }
 }
 
-void ntcd_cone_initialize(ntcd_cone* cone, double base_radius, double height){
+NTCD_DEF void ntcd_cone_initialize(ntcd_cone* cone, double base_radius, double height){
     cone->support      = ntcd__support_cone;
     cone->base_radius_ = base_radius;
     cone->half_height_ = 0.5 * height;
@@ -1283,7 +1325,7 @@ static void ntcd__support_bicone(double* support_point, const void* shape, const
     }
 }
 
-void ntcd_bicone_initialize(ntcd_bicone* bicone, double base_radius, double height){
+NTCD_DEF void ntcd_bicone_initialize(ntcd_bicone* bicone, double base_radius, double height){
     bicone->support      = ntcd__support_bicone;
     bicone->base_radius_ = base_radius;
     bicone->half_height_ = 0.5 * height;
@@ -1311,7 +1353,7 @@ static void ntcd__support_leaf_cylinder(double* support_point, const void* shape
     support_point[2] = z;
 }
 
-void ntcd_leaf_cylinder_initialize(ntcd_leaf_cylinder* leaf, double width, double length, double height){
+NTCD_DEF void ntcd_leaf_cylinder_initialize(ntcd_leaf_cylinder* leaf, double width, double length, double height){
     leaf->support          = ntcd__support_leaf_cylinder;
     leaf->half_width_      = 0.5 * width;
     leaf->half_length_     = 0.5 * length;
@@ -1335,7 +1377,7 @@ static void ntcd__support_sphere(double* support_point, const void* shape, const
     }
 }
 
-void ntcd_sphere_initialize(ntcd_sphere* sph){
+NTCD_DEF void ntcd_sphere_initialize(ntcd_sphere* sph){
     sph->support = ntcd__support_sphere;
 }
 
@@ -1344,7 +1386,7 @@ static void ntcd__support_point(double* support_point, const void* shape, const 
     memset(support_point, 0, 3 * sizeof(*dir));
 }
 
-void ntcd_point_initialize(ntcd_point* point){
+NTCD_DEF void ntcd_point_initialize(ntcd_point* point){
     point->support = ntcd__support_point;
 }
 
@@ -1355,7 +1397,7 @@ static void ntcd__support_line(double* support_point, const void* shape, const d
     support_point[2] = 0.0;
 }
 
-void ntcd_line_initialize(ntcd_line* line){
+NTCD_DEF void ntcd_line_initialize(ntcd_line* line){
     line->support = ntcd__support_line;
 }
 
@@ -1375,12 +1417,11 @@ static void ntcd__support_disk(double* support_point, const void* shape, const d
     }
 }
 
-void ntcd_disk_initialize(ntcd_disk* disk){
+NTCD_DEF void ntcd_disk_initialize(ntcd_disk* disk){
     disk->support = ntcd__support_disk;
 }
 
 //Mesh
-
 //TODO: Perhaps choose one of the two code paths depending on the number of vertices.
 static void ntcd__support_mesh(double* support_point, const void* shape, const double* dir){
     ntcd_mesh mesh = *(const ntcd_mesh*)shape;
@@ -1418,7 +1459,7 @@ static void ntcd__support_mesh(double* support_point, const void* shape, const d
     }
 }
 
-void ntcd_mesh_initialize(ntcd_mesh* mesh, const unsigned int n_vertices, const double* vertices, const unsigned int n_faces, const unsigned int* face_start, const unsigned int* faces){
+NTCD_DEF void ntcd_mesh_initialize(ntcd_mesh* mesh, const unsigned int n_vertices, const double* vertices, const unsigned int n_faces, const unsigned int* face_start, const unsigned int* faces){
     mesh->support     = ntcd__support_mesh;
     mesh->n_vertices_ = n_vertices;
     mesh->vertices_   = (double*)malloc(3 * n_vertices * sizeof(*vertices));
@@ -1490,7 +1531,7 @@ void ntcd_mesh_initialize(ntcd_mesh* mesh, const unsigned int n_vertices, const 
     free(edges);
 }
 
-void ntcd_mesh_terminate(ntcd_mesh* mesh){
+NTCD_DEF void ntcd_mesh_terminate(ntcd_mesh* mesh){
     free(mesh->vertices_);
     free(mesh->n_vert_neighbours_);
     for(unsigned int vid = 0; vid < mesh->n_vertices_; ++vid){
@@ -1510,7 +1551,7 @@ static void ntcd__support_sphere_swept(double* support_point, const void* shape,
     ntcd__vec3_add(support_point, support_point, sphere_point);
 }
 
-void ntcd_sphere_swept_initialize(ntcd_sphere_swept* swept, const void* shape){
+NTCD_DEF void ntcd_sphere_swept_initialize(ntcd_sphere_swept* swept, const void* shape){
     swept->support = ntcd__support_sphere_swept;
     swept->shape_  = shape;
 }
@@ -1538,7 +1579,7 @@ static void ntcd__support_hull(double* support_point, const void* shape, const d
     }
 }
 
-void ntcd_hull_initialize(ntcd_hull* hull, const ntcd_transform* ta, const void* ca, const ntcd_transform* tb, const void* cb){
+NTCD_DEF void ntcd_hull_initialize(ntcd_hull* hull, const ntcd_transform* ta, const void* ca, const ntcd_transform* tb, const void* cb){
     hull->support = ntcd__support_hull;
     hull->ca_     = ca;
     hull->cb_     = cb;
@@ -1566,7 +1607,7 @@ static void ntcd__support_minkowski_sum(double* support_point, const void* shape
     ntcd__vec3_add(support_point, support_point, support_point_b);
 }
 
-void ntcd_minkowski_sum_initialize(ntcd_minkowski_sum* msum, const ntcd_transform* t, const void* ca, const void* cb){
+NTCD_DEF void ntcd_minkowski_sum_initialize(ntcd_minkowski_sum* msum, const ntcd_transform* t, const void* ca, const void* cb){
     msum->support = ntcd__support_minkowski_sum;
     msum->ca_     = ca;
     msum->cb_     = cb;
@@ -1575,4 +1616,4 @@ void ntcd_minkowski_sum_initialize(ntcd_minkowski_sum* msum, const ntcd_transfor
     ntcd__quat_inverse(msum->inv_rot_, msum->t_.rot);
 }
 
-#endif //NTCD_IMPLEMENTATION
+#endif

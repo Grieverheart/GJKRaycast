@@ -2,6 +2,7 @@
 //#include "obj_loader.h"
 
 #define NTCD_IMPLEMENTATION
+#define NTCD_STATIC
 #include "ntcd.h"
 
 typedef uint8_t u8;
@@ -93,11 +94,11 @@ int main(int argc, char *argv[]){
     ntcd_point point;
     ntcd_point_initialize(&point);
 
-    //ntcd_mesh sphere;
+    //ntcd_mesh octahedron;
     //{
     //    std::vector<double> vertices;
     //    std::vector<std::vector<unsigned int>> faces;
-    //    load_obj("obj/sphere.obj", vertices, faces);
+    //    load_obj("obj/octahedron.obj", vertices, faces);
     //    std::vector<unsigned int> faces_;
     //    std::vector<unsigned int> face_start_;
     //    unsigned int i = 0;
@@ -108,7 +109,7 @@ int main(int argc, char *argv[]){
     //            ++i;
     //        }
     //    }
-    //    ntcd_mesh_initialize(&sphere, vertices.size(), vertices.data(), faces.size(), face_start_.data(), faces_.data());
+    //    ntcd_mesh_initialize(&octahedron, vertices.size(), vertices.data(), faces.size(), face_start_.data(), faces_.data());
     //}
 
     auto xform_a = ntcd_transform{

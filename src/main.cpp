@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstdint>
 //#include "obj_loader.h"
 
 #define NTCD_IMPLEMENTATION
@@ -131,7 +132,7 @@ int main(int argc, char *argv[]){
 
             double pos[] = {(double(w) / width - 0.5) * screen_width, (double(h) / height - 0.5) * screen_height, 5.0};
             memcpy(xform_a.pos, pos, 3 * sizeof(double));
-            double normal[3];
+            double normal[3] = {};
             double distance = 1000000.0;
             int ray_hit = ntcd_gjk_raycast(&distance, normal, &xform_a, &point, &xform_b, &msum, ray_dir);
 
